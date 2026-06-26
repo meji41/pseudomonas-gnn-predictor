@@ -1,0 +1,16 @@
+venv/
+__pycache__/
+*.pyc
+
+prediction_temp/
+prediction_results/
+
+*.zip
+
+.env
+.streamlit/secrets.toml
+
+AID_588726_datatable (FBA).csv/
+cleaned_aid_588726.csv
+summary.json
+training_history.json
