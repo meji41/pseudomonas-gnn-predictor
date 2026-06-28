@@ -1,15 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Dec 30 15:09:26 2022
-
-@author: Wanxiang.shen
-
-Basic bit
-"""
-
 import pandas as pd
-from rdkit.Chem.Draw import rdMolDraw2D
-from IPython.display import SVG
 
 class Bit(object):
     
@@ -25,28 +14,6 @@ class Bit(object):
                                    }):
         self.__dict__.update(onebitdict)
 
-    def show(self, mol,
-              width=300,
-              height=300,
-              highlightAtomColors=None,
-              highlightBondColors=None,
-              highlightAtomRadii=None, **kwargs):
-        '''
-        highlight the bit on a given mol, refer to the rdMolDraw2D.PrepareAndDrawMolecule method
-        '''
-        atomsToUse = self.atomInUse
-        bondsToUse = self.bondInUse
-        # or MolDraw2DCairo to get PNGs
-        d = rdMolDraw2D.MolDraw2DSVG(width, height)
-        rdMolDraw2D.PrepareAndDrawMolecule(d, mol, highlightAtoms=atomsToUse,
-                                           highlightBonds=bondsToUse,
-                                           highlightBondColors=highlightBondColors,
-                                           highlightAtomColors=highlightAtomColors,
-                                           highlightAtomRadii=highlightAtomRadii,
-                                           **kwargs)
-        d.FinishDrawing()
-        svg = d.GetDrawingText()
-        return SVG(svg)
     
     
 class FP(object):
