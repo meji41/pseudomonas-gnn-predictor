@@ -9,9 +9,7 @@ Python code to highlight the ECFP fingerprints on a given molecule
 
 from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
 from rdkit import Chem
-from rdkit.Chem import rdDepictor, Draw
-from rdkit.Chem.Draw import rdMolDraw2D
-from IPython.display import SVG
+from rdkit.Chem import rdDepictor
 from copy import deepcopy
 import numpy as np
 
