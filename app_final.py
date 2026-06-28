@@ -2,7 +2,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-
+import tempfile
 import streamlit as st
 
 st.set_page_config(
@@ -21,36 +21,41 @@ OUTPUT_DIR = BACKEND_DIR / "prediction_results"
 
 
 def predict_with_final_model(smiles: str):
-    command = [
-        sys.executable,
-        str(PREDICT_SCRIPT),
-        "--model-path",
-        str(MODEL_PATH),
-        "--smiles",
-        smiles,
-        "--fppool-path",
-        str(FPPOOL_PATH),
-        "--prepare-script",
-        str(PREPARE_SCRIPT),
-        "--save-predictions",
-    ]
+    with tempfile.TemporaryDirectory() as temp_output_dir, tempfile.TemporaryDirectory() as temp_graph_dir:
+        command = [
+            sys.executable,
+            str(PREDICT_SCRIPT),
+            "--model-path",
+            str(MODEL_PATH),
+            "--smiles",
+            smiles,
+            "--fppool-path",
+            str(FPPOOL_PATH),
+            "--prepare-script",
+            str(PREPARE_SCRIPT),
+            "--output-dir",
+            temp_output_dir,
+            "--temp-dir",
+            temp_graph_dir,
+            "--save-predictions",
+        ]
 
-    result = subprocess.run(
-        command,
-        cwd=str(BACKEND_DIR),
-        capture_output=True,
-        text=True,
-    )
+        result = subprocess.run(
+            command,
+            cwd=str(BACKEND_DIR),
+            capture_output=True,
+            text=True,
+        )
 
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr)
 
-    json_path = OUTPUT_DIR / "smiles_predictions.json"
+        json_path = Path(temp_output_dir) / "smiles_predictions.json"
 
-    with open(json_path, "r") as f:
-        predictions = json.load(f)
+        with open(json_path, "r", encoding="utf-8") as f:
+            predictions = json.load(f)
 
-    return predictions[0]
+        return predictions[0]
 
 
 st.sidebar.title("🧬 Living In Silico")
