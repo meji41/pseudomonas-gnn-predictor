@@ -1,10 +1,14 @@
-import json
-import subprocess
-import sys
-from pathlib import Path
+import shutil
 import tempfile
+from pathlib import Path
+
 import streamlit as st
 
+from predict_morgan_gnn import (
+    create_prediction_graphs,
+    load_model,
+    predict_from_graphs,
+)
 st.set_page_config(
     page_title="Pseudomonas Antimicrobial Predictor",
     page_icon="🧬",
@@ -13,49 +17,52 @@ st.set_page_config(
 
 PROJECT_DIR = Path(__file__).parent
 BACKEND_DIR = PROJECT_DIR
-PREDICT_SCRIPT = BACKEND_DIR / "predict_morgan_gnn.py"
+
 MODEL_PATH = BACKEND_DIR / "final_model.pt"
+TRAIN_SCRIPT = BACKEND_DIR / "train_baseline_gnns.py"
 FPPOOL_PATH = PROJECT_DIR / "FPPool"
 PREPARE_SCRIPT = PROJECT_DIR / "prepare_fppool_graphs.py"
-OUTPUT_DIR = BACKEND_DIR / "prediction_results"
+FIXED_MORGAN_SCRIPT = PROJECT_DIR / "make_fixed_morgan_graphs.py"
 
+@st.cache_resource
+def get_cached_model():
+    model, device, model_info = load_model(
+        model_path=MODEL_PATH,
+        train_script_path=TRAIN_SCRIPT,
+    )
+    return model, device, model_info
 
 def predict_with_final_model(smiles: str):
-    with tempfile.TemporaryDirectory() as temp_output_dir, tempfile.TemporaryDirectory() as temp_graph_dir:
-        command = [
-            sys.executable,
-            str(PREDICT_SCRIPT),
-            "--model-path",
-            str(MODEL_PATH),
-            "--smiles",
-            smiles,
-            "--fppool-path",
-            str(FPPOOL_PATH),
-            "--prepare-script",
-            str(PREPARE_SCRIPT),
-            "--output-dir",
-            temp_output_dir,
-            "--temp-dir",
-            temp_graph_dir,
-            "--save-predictions",
-        ]
+    model, device, model_info = get_cached_model()
 
-        result = subprocess.run(
-            command,
-            cwd=str(BACKEND_DIR),
-            capture_output=True,
-            text=True,
+    temp_dir = tempfile.mkdtemp(prefix="streamlit_prediction_")
+
+    try:
+        graphs_path, skipped_path = create_prediction_graphs(
+            smiles_list=[smiles],
+            prepare_script=PREPARE_SCRIPT,
+            fixed_morgan_script=FIXED_MORGAN_SCRIPT,
+            fppool_path=FPPOOL_PATH,
+            radius=2,
+            n_bits=2048,
+            temp_dir=temp_dir,
         )
 
-        if result.returncode != 0:
-            raise RuntimeError(result.stderr)
+        results = predict_from_graphs(
+            model=model,
+            device=device,
+            graphs_path=graphs_path,
+            threshold=0.8,
+            batch_size=64,
+        )
 
-        json_path = Path(temp_output_dir) / "smiles_predictions.json"
+        if len(results) == 0:
+            raise ValueError("No prediction result was returned.")
 
-        with open(json_path, "r", encoding="utf-8") as f:
-            predictions = json.load(f)
+        return results.iloc[0].to_dict()
 
-        return predictions[0]
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 st.sidebar.title("🧬 Living In Silico")
